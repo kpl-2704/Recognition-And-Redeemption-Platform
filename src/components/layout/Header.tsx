@@ -2,7 +2,6 @@ import { Bell, Plus, Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { UserSwitcher } from "@/components/auth/UserSwitcher";
@@ -53,9 +52,6 @@ export function Header() {
               Share Feedback
             </Button>
           </div>
-
-          {/* Theme Toggle */}
-          <ThemeToggle />
 
           {/* Notifications */}
           <DropdownMenu>

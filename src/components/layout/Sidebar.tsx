@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Gift,
 } from "lucide-react";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
@@ -23,6 +24,7 @@ const navigationItems = [
   { path: "/kudos", icon: Heart, label: "Kudos" },
   { path: "/feedback", icon: MessageSquare, label: "Feedback" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
+  { path: "/redeem", icon: Gift, label: "Redeem" },
   { path: "/profile", icon: User, label: "Profile" },
 ];
 

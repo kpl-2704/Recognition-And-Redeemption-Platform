@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
-import { useTheme } from "@/components/theme/ThemeProvider";
 import {
   Settings as SettingsIcon,
   User,
@@ -23,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function Settings() {
   const { setCurrentPage, addNotification } = useUIStore();
   const { currentUser, updateProfile } = useUserStore();
-  const { theme, setTheme } = useTheme();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
@@ -71,7 +69,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile" className="gap-2">
             <User className="w-4 h-4" />
             Profile
@@ -83,10 +81,6 @@ export default function Settings() {
           <TabsTrigger value="privacy" className="gap-2">
             <Shield className="w-4 h-4" />
             Privacy
-          </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2">
-            <Palette className="w-4 h-4" />
-            Appearance
           </TabsTrigger>
         </TabsList>
 
@@ -285,56 +279,6 @@ export default function Settings() {
                     Delete Account
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Appearance Settings */}
-        <TabsContent value="appearance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance & Theme</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base">Theme</Label>
-                  <p className="text-sm text-gray-500">
-                    Choose your preferred theme
-                  </p>
-                </div>
-                <select
-                  className="p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800"
-                  value={theme}
-                  onChange={(e) =>
-                    setTheme(e.target.value as "light" | "dark" | "system")
-                  }
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="system">System</option>
-                </select>
-              </div>
-              <div>
-                <Label className="text-base">Language</Label>
-                <p className="text-sm text-gray-500 mb-3">
-                  Choose your preferred language
-                </p>
-                <select className="w-full p-2 border border-gray-300 rounded-md">
-                  <option>English (US)</option>
-                  <option>Spanish</option>
-                  <option>French</option>
-                  <option>German</option>
-                </select>
-              </div>
-
-              <div>
-                <Label className="text-base">Time Zone</Label>
-                <p className="text-sm text-gray-500 mb-3">
-                  Automatically detected
-                </p>
-                <Input defaultValue="Pacific Standard Time (PST)" disabled />
               </div>
             </CardContent>
           </Card>
