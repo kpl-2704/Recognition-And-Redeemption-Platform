@@ -1,5 +1,7 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { StatsCards } from "@/components/analytics/StatsCards";
@@ -7,16 +9,26 @@ import { KudosCard } from "@/components/kudos/KudosCard";
 import { useKudosStore } from "@/stores/useKudosStore";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
-import { Heart, TrendingUp } from "lucide-react";
+import { useVoucherStore } from "@/stores/useVoucherStore";
+import { Heart, TrendingUp, Coins, Gift } from "lucide-react";
 
 export default function Dashboard() {
   const { kudos, getKudosStats } = useKudosStore();
   const { setCurrentPage } = useUIStore();
   const { currentUser } = useUserStore();
+  const { getUserPoints, addPointsToUser } = useVoucherStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setCurrentPage("dashboard");
-  }, [setCurrentPage]);
+
+    // Give user points based on their kudos activity
+    if (currentUser) {
+      const kudosPoints =
+        currentUser.totalKudosReceived * 50 + currentUser.totalKudosSent * 30;
+      addPointsToUser(currentUser.id, kudosPoints, "Kudos activity bonus");
+    }
+  }, [setCurrentPage, currentUser, addPointsToUser]);
 
   const stats = getKudosStats();
   const recentKudos = kudos.slice(0, 3);
@@ -79,6 +91,24 @@ export default function Dashboard() {
                     {stats.received}
                   </span>
                 </div>
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-yellow-500" />
+                    <span className="font-medium">Reward Points</span>
+                  </div>
+                  <span className="text-2xl font-bold text-yellow-600">
+                    {currentUser
+                      ? getUserPoints(currentUser.id).toLocaleString()
+                      : 0}
+                  </span>
+                </div>
+                <Button
+                  onClick={() => navigate("/redeem")}
+                  className="w-full gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                >
+                  <Gift className="w-4 h-4" />
+                  Redeem Vouchers
+                </Button>
               </div>
             </CardContent>
           </Card>
