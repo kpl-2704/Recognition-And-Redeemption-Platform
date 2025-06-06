@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import {
   Settings as SettingsIcon,
   User,
@@ -20,9 +21,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Settings() {
-  const { setCurrentPage, toggleDarkMode, isDarkMode, addNotification } =
-    useUIStore();
+  const { setCurrentPage, addNotification } = useUIStore();
   const { currentUser, updateProfile } = useUserStore();
+  const { theme, setTheme } = useTheme();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
@@ -298,12 +299,23 @@ export default function Settings() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-base">Dark Mode</Label>
-                  <p className="text-sm text-gray-500">Switch to dark theme</p>
+                  <Label className="text-base">Theme</Label>
+                  <p className="text-sm text-gray-500">
+                    Choose your preferred theme
+                  </p>
                 </div>
-                <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
+                <select
+                  className="p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800"
+                  value={theme}
+                  onChange={(e) =>
+                    setTheme(e.target.value as "light" | "dark" | "system")
+                  }
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">System</option>
+                </select>
               </div>
-
               <div>
                 <Label className="text-base">Language</Label>
                 <p className="text-sm text-gray-500 mb-3">

@@ -5,14 +5,12 @@ interface UIState {
   currentPage: string;
   isKudosModalOpen: boolean;
   isFeedbackModalOpen: boolean;
-  isDarkMode: boolean;
   toggleSidebar: () => void;
   setCurrentPage: (page: string) => void;
   openKudosModal: () => void;
   closeKudosModal: () => void;
   openFeedbackModal: () => void;
   closeFeedbackModal: () => void;
-  toggleDarkMode: () => void;
   notifications: Array<{
     id: string;
     type: "success" | "error" | "info" | "warning";
@@ -31,7 +29,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   currentPage: "dashboard",
   isKudosModalOpen: false,
   isFeedbackModalOpen: false,
-  isDarkMode: false,
   notifications: [],
 
   toggleSidebar: () => {
@@ -56,10 +53,6 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   closeFeedbackModal: () => {
     set({ isFeedbackModalOpen: false });
-  },
-
-  toggleDarkMode: () => {
-    set((state) => ({ isDarkMode: !state.isDarkMode }));
   },
 
   addNotification: (notification) => {
