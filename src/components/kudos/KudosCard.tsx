@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Kudos } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CommentModal } from "./CommentModal";
+import { useCommentsStore } from "@/stores/useCommentsStore";
+import { useUIStore } from "@/stores/useUIStore";
 import { formatDistanceToNow } from "date-fns";
 import { Heart, MessageCircle, Share2 } from "lucide-react";
 
@@ -12,14 +16,34 @@ interface KudosCardProps {
 }
 
 export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const { getCommentsForKudos } = useCommentsStore();
+  const { addNotification } = useUIStore();
+
+  const comments = getCommentsForKudos(kudos.id);
+  const commentCount = comments.length;
+
   const handleComment = () => {
-    // Handle comment action
-    console.log("Comment on kudos:", kudos.id);
+    setIsCommentModalOpen(true);
   };
 
   const handleShare = () => {
-    // Handle share action
-    console.log("Share kudos:", kudos.id);
+    if (navigator.share) {
+      navigator.share({
+        title: "TeamPulse Kudos",
+        text: `Check out this kudos: "${kudos.message}"`,
+        url: window.location.href,
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(
+        `Check out this kudos from ${kudos.fromUser.name} to ${kudos.toUser.name}: "${kudos.message}"`,
+      );
+      addNotification({
+        type: "success",
+        message: "Kudos copied to clipboard!",
+      });
+    }
   };
 
   return (
@@ -88,9 +112,12 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
                     variant="ghost"
                     size="sm"
                     onClick={handleComment}
-                    className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                    className="h-8 px-3 text-gray-500 hover:text-gray-700 gap-1"
                   >
                     <MessageCircle className="w-4 h-4" />
+                    {commentCount > 0 && (
+                      <span className="text-xs">{commentCount}</span>
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -106,6 +133,13 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
           </div>
         </div>
       </CardContent>
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        kudos={kudos}
+      />
     </Card>
   );
 }
