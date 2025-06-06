@@ -144,6 +144,11 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* User Switcher Dialog */}
+      {showUserSwitcher && (
+        <UserSwitcher onClose={() => setShowUserSwitcher(false)} />
+      )}
     </header>
   );
 }
