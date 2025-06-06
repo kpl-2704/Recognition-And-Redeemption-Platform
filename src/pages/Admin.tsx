@@ -43,18 +43,27 @@ import {
   Key,
   Crown,
   UserX,
+  Clock,
+  Award,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { User } from "@/types";
+import { User, Kudos } from "@/types";
+import { mockUsers } from "@/data/mockData";
 
 export default function Admin() {
   const { setCurrentPage, addNotification } = useUIStore();
   const { currentUser } = useUserStore();
   const { feedback, updateFeedbackStatus, getPendingFeedback } =
     useFeedbackStore();
-  const { kudos } = useKudosStore();
-  const { users, updateUserRole, deleteUser, resetUserPassword } =
-    useUserManagementStore();
+  const { kudos, pendingKudos, approveKudos, rejectKudos } = useKudosStore();
+  const {
+    users,
+    updateUserRole,
+    deleteUser,
+    resetUserPassword,
+    addUser,
+    updateUser,
+  } = useUserManagementStore();
   const [activeTab, setActiveTab] = useState("overview");
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -66,6 +75,9 @@ export default function Admin() {
   useEffect(() => {
     setCurrentPage("admin");
   }, [setCurrentPage]);
+
+  // Ensure we have users from either store or mock data
+  const allUsers = users.length > 0 ? users : mockUsers;
 
   // Check if user is admin - with better error handling
   if (!currentUser) {
@@ -97,9 +109,10 @@ export default function Admin() {
   }
 
   const pendingFeedback = getPendingFeedback();
-  const totalUsers = users.length;
+  const totalUsers = allUsers.length;
   const totalKudos = kudos.length;
   const totalFeedback = feedback.length;
+  const pendingKudosCount = pendingKudos ? pendingKudos.length : 0;
 
   const handleCreateUser = () => {
     setUserModalMode("create");
@@ -130,7 +143,7 @@ export default function Admin() {
 
   const handleRoleChange = (userId: string, newRole: "user" | "admin") => {
     updateUserRole(userId, newRole);
-    const user = users.find((u) => u.id === userId);
+    const user = allUsers.find((u) => u.id === userId);
     addNotification({
       type: "success",
       message: `${user?.name}'s role updated to ${newRole}`,
@@ -156,6 +169,25 @@ export default function Admin() {
       type: "success",
       message: `Feedback ${action === "approve" ? "approved" : "flagged"} successfully`,
     });
+  };
+
+  const handleKudosApproval = (
+    kudosId: string,
+    action: "approve" | "reject",
+  ) => {
+    if (action === "approve") {
+      approveKudos(kudosId);
+      addNotification({
+        type: "success",
+        message: "Kudos approved and published!",
+      });
+    } else {
+      rejectKudos(kudosId);
+      addNotification({
+        type: "info",
+        message: "Kudos rejected.",
+      });
+    }
   };
 
   const exportData = (type: "kudos" | "feedback" | "users") => {
@@ -188,7 +220,7 @@ export default function Admin() {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6 text-center">
             <Users className="w-8 h-8 text-blue-500 mx-auto mb-2" />
@@ -226,13 +258,24 @@ export default function Admin() {
             <p className="text-sm text-gray-600">Pending Reviews</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-6 text-center">
+            <Clock className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-gray-900">
+              {pendingKudosCount}
+            </p>
+            <p className="text-sm text-gray-600">Pending Kudos</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Admin Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="kudos-approval">Kudos Approval</TabsTrigger>
           <TabsTrigger value="moderation">Moderation</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
@@ -272,10 +315,11 @@ export default function Admin() {
                     <AlertTriangle className="w-5 h-5 text-yellow-600" />
                     <div className="flex-1">
                       <p className="text-sm font-medium">
-                        Feedback pending review
+                        Items pending review
                       </p>
                       <p className="text-xs text-gray-500">
-                        {pendingFeedback.length} items awaiting moderation
+                        {pendingFeedback.length + pendingKudosCount} items
+                        awaiting moderation
                       </p>
                     </div>
                   </div>
@@ -290,7 +334,7 @@ export default function Admin() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {mockUsers.slice(0, 5).map((user, index) => (
+                  {allUsers.slice(0, 5).map((user, index) => (
                     <div key={user.id} className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-gray-500">
                         #{index + 1}
@@ -332,7 +376,7 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {users.map((user) => (
+                {allUsers.map((user) => (
                   <div
                     key={user.id}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
@@ -421,6 +465,112 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="kudos-approval" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Kudos Pending Approval</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {pendingKudos && pendingKudos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Award className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      All caught up!
+                    </h3>
+                    <p className="text-gray-500">No kudos pending approval</p>
+                  </div>
+                ) : (
+                  pendingKudos?.map((kudosItem) => (
+                    <div
+                      key={kudosItem.id}
+                      className="p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage
+                              src={kudosItem.fromUser.avatar}
+                              alt={kudosItem.fromUser.name}
+                            />
+                            <AvatarFallback>
+                              {kudosItem.fromUser.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {kudosItem.fromUser.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              wants to give kudos to{" "}
+                              {Array.isArray(kudosItem.toUser)
+                                ? kudosItem.toUser.map((u) => u.name).join(", ")
+                                : kudosItem.toUser.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {formatDistanceToNow(kudosItem.createdAt, {
+                                addSuffix: true,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">Pending</Badge>
+                      </div>
+
+                      <p className="text-gray-700 mb-4">
+                        "{kudosItem.message}"
+                      </p>
+
+                      {kudosItem.tags && kudosItem.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {kudosItem.tags.map((tag) => (
+                            <Badge
+                              key={tag.id}
+                              variant="secondary"
+                              className={`${tag.color} border-0 gap-1`}
+                            >
+                              <span>{tag.emoji}</span>
+                              {tag.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            handleKudosApproval(kudosItem.id, "approve")
+                          }
+                          className="gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleKudosApproval(kudosItem.id, "reject")
+                          }
+                          className="gap-2"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Reject
+                        </Button>
+                        <Button size="sm" variant="ghost" className="gap-2">
+                          <Eye className="w-4 h-4" />
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  )) || []
+                )}
               </div>
             </CardContent>
           </Card>
