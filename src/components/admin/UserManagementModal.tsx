@@ -35,7 +35,7 @@ const userSchema = z.object({
   email: z.string().email("Invalid email address"),
   department: z.string().min(1, "Department is required"),
   role: z.enum(["user", "admin"]),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required"),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -68,27 +68,40 @@ export function UserManagementModal({
   });
 
   const onSubmit = (data: UserFormData) => {
-    if (mode === "create") {
-      addUser(data);
-      addNotification({
-        type: "success",
-        message: `User ${data.name} created successfully!`,
+    try {
+      if (mode === "create") {
+        addUser(data);
+        addNotification({
+          type: "success",
+          message: `User ${data.name} created successfully!`,
+        });
+      } else if (mode === "edit" && editingUser) {
+        updateUser(editingUser.id, {
+          name: data.name,
+          email: data.email,
+          department: data.department,
+          role: data.role,
+        });
+        addNotification({
+          type: "success",
+          message: `User ${data.name} updated successfully!`,
+        });
+      }
+
+      form.reset({
+        name: "",
+        email: "",
+        department: "",
+        role: "user",
+        password: "",
       });
-    } else if (mode === "edit" && editingUser) {
-      updateUser(editingUser.id, {
-        name: data.name,
-        email: data.email,
-        department: data.department,
-        role: data.role,
-      });
+      onClose();
+    } catch (error) {
       addNotification({
-        type: "success",
-        message: `User ${data.name} updated successfully!`,
+        type: "error",
+        message: "An error occurred while saving the user.",
       });
     }
-
-    form.reset();
-    onClose();
   };
 
   const departments = [
