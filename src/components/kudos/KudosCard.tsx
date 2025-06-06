@@ -23,7 +23,7 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
   };
 
   return (
-    <Card className="transition-all duration-200 hover:shadow-md">
+    <Card className="kudos-card card-hover animate-fade-in transition-all duration-200 hover:shadow-md">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           {/* Avatar */}

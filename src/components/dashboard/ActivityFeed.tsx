@@ -102,10 +102,11 @@ export function ActivityFeed() {
               </p>
             </div>
           ) : (
-            activityFeed.map((item) => (
+            activityFeed.map((item, index) => (
               <div
                 key={item.id}
-                className="flex items-start gap-3 pb-4 border-b border-gray-100 last:border-b-0 last:pb-0"
+                className="activity-item flex items-start gap-3 pb-4 border-b border-gray-100 last:border-b-0 last:pb-0"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={item.user.avatar} alt={item.user.name} />
