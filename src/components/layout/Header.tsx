@@ -18,7 +18,6 @@ import { useState } from "react";
 export function Header() {
   const { openKudosModal, openFeedbackModal, notifications } = useUIStore();
   const { currentUser, logout } = useUserStore();
-  const [showUserSwitcher, setShowUserSwitcher] = useState(false);
 
   const unreadCount = notifications.length;
 
@@ -123,13 +122,7 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Demo Features</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => setShowUserSwitcher(true)}
-                className="gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Switch User
-              </DropdownMenuItem>
+              <UserSwitcher />
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
@@ -144,11 +137,6 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
-
-      {/* User Switcher Dialog */}
-      {showUserSwitcher && (
-        <UserSwitcher onClose={() => setShowUserSwitcher(false)} />
-      )}
     </header>
   );
 }
