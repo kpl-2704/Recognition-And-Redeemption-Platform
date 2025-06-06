@@ -12,6 +12,7 @@ import Feedback from "./pages/Feedback";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Admin />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AppLayout>
+                <Settings />
               </AppLayout>
             }
           />
