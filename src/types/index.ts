@@ -78,3 +78,6 @@ export interface TeamStats {
   topPerformers: User[];
   engagementTrend: Array<{ date: string; kudos: number; feedback: number }>;
 }
+
+// Re-export voucher types
+export * from "./vouchers";
