@@ -67,8 +67,20 @@ export default function Admin() {
     setCurrentPage("admin");
   }, [setCurrentPage]);
 
-  // Check if user is admin
-  if (!currentUser || currentUser.role !== "admin") {
+  // Check if user is admin - with better error handling
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading...</h2>
+          <p className="text-gray-600">Checking user permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentUser.role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
