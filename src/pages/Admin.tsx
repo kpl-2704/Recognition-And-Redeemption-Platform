@@ -8,12 +8,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { UserManagementModal } from "@/components/admin/UserManagementModal";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { useFeedbackStore } from "@/stores/useFeedbackStore";
 import { useKudosStore } from "@/stores/useKudosStore";
+import { useUserManagementStore } from "@/stores/useUserManagementStore";
 import {
   Shield,
   Users,
@@ -24,9 +37,15 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  Plus,
+  Edit,
+  Trash2,
+  Key,
+  Crown,
+  UserX,
 } from "lucide-react";
-import { mockUsers } from "@/data/mockData";
 import { formatDistanceToNow } from "date-fns";
+import { User } from "@/types";
 
 export default function Admin() {
   const { setCurrentPage, addNotification } = useUIStore();
@@ -34,7 +53,15 @@ export default function Admin() {
   const { feedback, updateFeedbackStatus, getPendingFeedback } =
     useFeedbackStore();
   const { kudos } = useKudosStore();
+  const { users, updateUserRole, deleteUser, resetUserPassword } =
+    useUserManagementStore();
   const [activeTab, setActiveTab] = useState("overview");
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userModalMode, setUserModalMode] = useState<"create" | "edit">(
+    "create",
+  );
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
 
   useEffect(() => {
     setCurrentPage("admin");
@@ -58,9 +85,54 @@ export default function Admin() {
   }
 
   const pendingFeedback = getPendingFeedback();
-  const totalUsers = mockUsers.length;
+  const totalUsers = users.length;
   const totalKudos = kudos.length;
   const totalFeedback = feedback.length;
+
+  const handleCreateUser = () => {
+    setUserModalMode("create");
+    setEditingUser(null);
+    setIsUserModalOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setUserModalMode("edit");
+    setEditingUser(user);
+    setIsUserModalOpen(true);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setDeleteConfirmUser(user);
+  };
+
+  const confirmDeleteUser = () => {
+    if (deleteConfirmUser) {
+      deleteUser(deleteConfirmUser.id);
+      addNotification({
+        type: "success",
+        message: `User ${deleteConfirmUser.name} deleted successfully`,
+      });
+      setDeleteConfirmUser(null);
+    }
+  };
+
+  const handleRoleChange = (userId: string, newRole: "user" | "admin") => {
+    updateUserRole(userId, newRole);
+    const user = users.find((u) => u.id === userId);
+    addNotification({
+      type: "success",
+      message: `${user?.name}'s role updated to ${newRole}`,
+    });
+  };
+
+  const handlePasswordReset = (user: User) => {
+    const newPassword = `temp${Math.random().toString(36).slice(-6)}`;
+    resetUserPassword(user.id, newPassword);
+    addNotification({
+      type: "info",
+      message: `Password reset for ${user.name}. New password: ${newPassword}`,
+    });
+  };
 
   const handleFeedbackAction = (
     feedbackId: string,
@@ -239,12 +311,16 @@ export default function Admin() {
 
         <TabsContent value="users" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Team Members</CardTitle>
+              <Button onClick={handleCreateUser} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add User
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockUsers.map((user) => (
+                {users.map((user) => (
                   <div
                     key={user.id}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
@@ -261,8 +337,12 @@ export default function Admin() {
                             variant={
                               user.role === "admin" ? "default" : "secondary"
                             }
+                            className="gap-1"
                           >
-                            {user.role}
+                            {user.role === "admin" && (
+                              <Crown className="w-3 h-3" />
+                            )}
+                            {user.role === "admin" ? "Admin" : "Member"}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-500">{user.email}</p>
@@ -287,9 +367,43 @@ export default function Admin() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>Send Message</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Permissions</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditUser(user)}
+                            className="gap-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleRoleChange(
+                                user.id,
+                                user.role === "admin" ? "user" : "admin",
+                              )
+                            }
+                            className="gap-2"
+                          >
+                            <Crown className="w-4 h-4" />
+                            {user.role === "admin"
+                              ? "Remove Admin"
+                              : "Make Admin"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handlePasswordReset(user)}
+                            className="gap-2"
+                          >
+                            <Key className="w-4 h-4" />
+                            Reset Password
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteUser(user)}
+                            className="gap-2 text-red-600"
+                            disabled={user.id === currentUser?.id}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete User
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -437,6 +551,40 @@ export default function Admin() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* User Management Modal */}
+      <UserManagementModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        editingUser={editingUser}
+        mode={userModalMode}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteConfirmUser}
+        onOpenChange={() => setDeleteConfirmUser(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deleteConfirmUser?.name}? This
+              action cannot be undone. All their kudos and feedback will be
+              preserved but attributed to a deleted user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUser}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
