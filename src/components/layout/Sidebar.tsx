@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
+import { UserSwitcher } from "@/components/auth/UserSwitcher";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -161,7 +162,7 @@ export function Sidebar() {
       </nav>
 
       {/* Settings */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 space-y-2">
         <Link
           to="/settings"
           className={cn(
@@ -172,6 +173,13 @@ export function Sidebar() {
           <Settings className="w-5 h-5 flex-shrink-0" />
           {isSidebarOpen && "Settings"}
         </Link>
+
+        {/* User Switcher - Demo Feature */}
+        {isSidebarOpen && (
+          <div className="pt-2">
+            <UserSwitcher />
+          </div>
+        )}
       </div>
     </div>
   );

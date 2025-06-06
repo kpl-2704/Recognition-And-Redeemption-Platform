@@ -1,20 +1,24 @@
-import { Bell, Plus, Search } from "lucide-react";
+import { Bell, Plus, Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/stores/useUIStore";
 import { useUserStore } from "@/stores/useUserStore";
+import { UserSwitcher } from "@/components/auth/UserSwitcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { useState } from "react";
 
 export function Header() {
   const { openKudosModal, openFeedbackModal, notifications } = useUIStore();
   const { currentUser, logout } = useUserStore();
+  const [showUserSwitcher, setShowUserSwitcher] = useState(false);
 
   const unreadCount = notifications.length;
 
@@ -104,7 +108,9 @@ export function Header() {
                 <span className="hidden sm:inline">{currentUser?.name}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => (window.location.href = "/profile")}
               >
@@ -114,6 +120,15 @@ export function Header() {
                 onClick={() => (window.location.href = "/settings")}
               >
                 Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Demo Features</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => setShowUserSwitcher(true)}
+                className="gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Switch User
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
