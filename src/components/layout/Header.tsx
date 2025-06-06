@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
 
 export function Header() {
   const { openKudosModal, openFeedbackModal, notifications } = useUIStore();
