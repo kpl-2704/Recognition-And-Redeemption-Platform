@@ -12,8 +12,8 @@ interface UserState {
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
-  currentUser: currentUser, // Start with mock user for development
-  isAuthenticated: true, // Start authenticated for development
+  currentUser: null, // Start logged out
+  isAuthenticated: false, // Start unauthenticated
   isLoading: false,
 
   login: (user: User) => {

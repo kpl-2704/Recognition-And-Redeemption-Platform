@@ -105,10 +105,24 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>My Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => (window.location.href = "/profile")}
+              >
+                My Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => (window.location.href = "/settings")}
+              >
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-red-600">
+              <DropdownMenuItem
+                onClick={() => {
+                  logout();
+                  window.location.href = "/";
+                }}
+                className="text-red-600 focus:text-red-600"
+              >
                 Sign Out
               </DropdownMenuItem>
             </DropdownMenuContent>
