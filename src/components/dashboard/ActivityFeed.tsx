@@ -1,13 +1,46 @@
+import { useState } from "react";
 import { ActivityItem } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CommentModal } from "@/components/kudos/CommentModal";
+import { useCommentsStore } from "@/stores/useCommentsStore";
+import { useUIStore } from "@/stores/useUIStore";
 import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageSquare, Trophy } from "lucide-react";
+import { Heart, MessageSquare, Trophy, Share2 } from "lucide-react";
 import { useKudosStore } from "@/stores/useKudosStore";
 
 export function ActivityFeed() {
   const { activityFeed, isLoading } = useKudosStore();
+  const { getCommentsForKudos } = useCommentsStore();
+  const { addNotification } = useUIStore();
+  const [selectedKudos, setSelectedKudos] = useState<any>(null);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+
+  const handleComment = (kudos: any) => {
+    setSelectedKudos(kudos);
+    setIsCommentModalOpen(true);
+  };
+
+  const handleShare = (item: ActivityItem) => {
+    if (item.kudos) {
+      const shareText = `Check out this kudos from ${item.kudos.fromUser.name} to ${item.kudos.toUser.name}: "${item.kudos.message}"`;
+      if (navigator.share) {
+        navigator.share({
+          title: "TeamPulse Kudos",
+          text: shareText,
+          url: window.location.href,
+        });
+      } else {
+        navigator.clipboard.writeText(shareText);
+        addNotification({
+          type: "success",
+          message: "Activity shared to clipboard!",
+        });
+      }
+    }
+  };
 
   const getActivityIcon = (type: ActivityItem["type"]) => {
     switch (type) {
@@ -125,7 +158,7 @@ export function ActivityFeed() {
                         "{item.kudos.message}"
                       </p>
                       {item.kudos.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 mb-3">
                           {item.kudos.tags.map((tag) => (
                             <Badge
                               key={tag.id}
@@ -138,9 +171,33 @@ export function ActivityFeed() {
                           ))}
                         </div>
                       )}
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleComment(item.kudos)}
+                          className="h-8 px-3 text-gray-500 hover:text-gray-700 gap-1"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          {getCommentsForKudos(item.kudos!.id).length > 0 && (
+                            <span className="text-xs">
+                              {getCommentsForKudos(item.kudos!.id).length}
+                            </span>
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleShare(item)}
+                          className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
-
                   {item.feedback && (
                     <div className="mt-2 p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm text-gray-700">
@@ -165,6 +222,13 @@ export function ActivityFeed() {
           )}
         </div>
       </CardContent>
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        kudos={selectedKudos}
+      />
     </Card>
   );
 }
