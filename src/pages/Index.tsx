@@ -1,10 +1,7 @@
-import { useEffect } from "react";
-import { Navigate } from "react-router-dom";
-
+// This file is no longer used as the main entry point
+// The Dashboard component is now the home page
 const Index = () => {
-  // This component now just redirects to the dashboard
-  // since the main app content is handled by the Dashboard component
-  return <Navigate to="/" replace />;
+  return null;
 };
 
 export default Index;

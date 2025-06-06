@@ -7,6 +7,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KudosForm } from "@/components/kudos/KudosForm";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import Dashboard from "./pages/Dashboard";
+import Kudos from "./pages/Kudos";
+import Feedback from "./pages/Feedback";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
@@ -26,6 +28,22 @@ const App = () => (
             element={
               <AppLayout>
                 <Dashboard />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/kudos"
+            element={
+              <AppLayout>
+                <Kudos />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/feedback"
+            element={
+              <AppLayout>
+                <Feedback />
               </AppLayout>
             }
           />
