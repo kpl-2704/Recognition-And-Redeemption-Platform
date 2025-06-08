@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { KudosCard } from "@/components/kudos/KudosCard";
 import { useUIStore } from "@/stores/useUIStore";
 import { useKudosStore } from "@/stores/useKudosStore";
 import { useUserStore } from "@/stores/useUserStore";
+import { useSearchStore } from "@/stores/useSearchStore";
 import { Heart, Search, Plus, Filter } from "lucide-react";
 import {
   Select,
@@ -15,11 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchDropdown } from "@/components/search/SearchDropdown";
 
 export default function Kudos() {
   const { setCurrentPage, openKudosModal } = useUIStore();
   const { kudos, tags } = useKudosStore();
   const { currentUser } = useUserStore();
+  const { query, results, isDropdownOpen, setQuery, navigateToResult } =
+    useSearchStore();
+  const searchRef = useRef<HTMLDivElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -33,7 +39,11 @@ export default function Kudos() {
     const matchesSearch =
       kudos.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
       kudos.fromUser.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      kudos.toUser.name.toLowerCase().includes(searchQuery.toLowerCase());
+      (Array.isArray(kudos.toUser)
+        ? kudos.toUser.some((user) =>
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : kudos.toUser.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesTag =
       selectedTag === "all" || kudos.tags.some((tag) => tag.id === selectedTag);
@@ -46,6 +56,19 @@ export default function Kudos() {
 
     return matchesSearch && matchesTag && matchesFilter;
   });
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  };
+
+  const handleSearchFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleResultClick = (result: any) => {
+    navigateToResult(result);
+    setIsFocused(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -106,14 +129,20 @@ export default function Kudos() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
+            <div className="flex-1 max-w-lg">
+              <div className="relative" ref={searchRef}>
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search kudos, people, or messages..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={query}
+                  onChange={handleSearchChange}
+                  onFocus={handleSearchFocus}
+                  placeholder="Search people, kudos, or feedback..."
                   className="pl-10"
+                />
+                <SearchDropdown
+                  isOpen={isDropdownOpen && isFocused}
+                  results={results}
+                  onResultClick={handleResultClick}
                 />
               </div>
             </div>

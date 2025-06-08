@@ -1,43 +1,78 @@
 import { create } from "zustand";
 import { User } from "@/types";
-import { currentUser } from "@/data/mockData";
+import { mockUsers } from "@/data/mockData";
 
 interface UserState {
   currentUser: User | null;
+  users: User[];
   isAuthenticated: boolean;
-  isLoading: boolean;
   login: (user: User) => void;
   logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  getCurrentUser: () => User | null;
 }
 
-export const useUserStore = create<UserState>((set, get) => ({
-  currentUser: null, // Start logged out
-  isAuthenticated: false, // Start unauthenticated
-  isLoading: false,
-
-  login: (user: User) => {
-    set({
-      currentUser: user,
-      isAuthenticated: true,
-      isLoading: false,
-    });
-  },
-
-  logout: () => {
-    set({
-      currentUser: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
-  },
-
-  updateProfile: (updates: Partial<User>) => {
-    const { currentUser } = get();
-    if (currentUser) {
-      set({
-        currentUser: { ...currentUser, ...updates },
-      });
+// Load initial state from localStorage or use mock data
+const loadInitialState = () => {
+  try {
+    const stored = localStorage.getItem("user-store");
+    if (stored) {
+      const { state, version } = JSON.parse(stored);
+      if (version === 1) {
+        // Current version
+        return state;
+      }
     }
-  },
-}));
+  } catch (error) {
+    console.error("Error loading user store:", error);
+  }
+  return {
+    currentUser: null,
+    users: mockUsers,
+    isAuthenticated: false,
+  };
+};
+
+export const useUserStore = create<UserState>((set, get) => {
+  // Initialize with stored state or mock data
+  const initialState = loadInitialState();
+
+  return {
+    ...initialState,
+
+    login: (user: User) => {
+      set((state) => {
+        const newState = {
+          ...state,
+          currentUser: user,
+          isAuthenticated: true,
+        };
+        // Save to localStorage
+        localStorage.setItem(
+          "user-store",
+          JSON.stringify({ state: newState, version: 1 }),
+        );
+        return newState;
+      });
+    },
+
+    logout: () => {
+      set((state) => {
+        const newState = {
+          ...state,
+          currentUser: null,
+          isAuthenticated: false,
+        };
+        // Save to localStorage
+        localStorage.setItem(
+          "user-store",
+          JSON.stringify({ state: newState, version: 1 }),
+        );
+        return newState;
+      });
+    },
+
+    getCurrentUser: () => {
+      return get().currentUser;
+    },
+  };
+});

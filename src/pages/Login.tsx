@@ -7,10 +7,12 @@ import { useUserStore } from "@/stores/useUserStore";
 import { useUIStore } from "@/stores/useUIStore";
 import { mockUsers } from "@/data/mockData";
 import { Zap, Users, Crown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const { login } = useUserStore();
   const { addNotification } = useUIStore();
+  const navigate = useNavigate();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   const handleLogin = (user: any) => {
@@ -19,6 +21,7 @@ export default function Login() {
       type: "success",
       message: `Welcome back, ${user.name}! 👋`,
     });
+    navigate("/");
   };
 
   return (

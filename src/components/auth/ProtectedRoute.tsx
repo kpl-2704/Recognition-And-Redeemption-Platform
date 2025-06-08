@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useUserStore } from "@/stores/useUserStore";
-import Login from "@/pages/Login";
+import { useNavigate } from "react-router-dom";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -8,9 +8,16 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated } = useUserStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
   if (!isAuthenticated) {
-    return <Login />;
+    return null;
   }
 
   return <>{children}</>;

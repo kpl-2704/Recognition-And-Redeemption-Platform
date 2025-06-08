@@ -91,33 +91,24 @@ export function KudosForm() {
       return;
     }
 
-    // Check if approval is required (admin giving kudos to regular users)
-    const requiresApproval =
-      currentUser.role === "admin" &&
-      selectedUsers.some((user) => user.role === "user");
-
     addKudos({
       fromUserId: currentUser.id,
-      toUserId: selectedUsers.length === 1 ? selectedUsers[0].id : "",
+      toUserId: selectedUsers[0].id,
       message: data.message,
       tags: selectedTags,
       isPublic: data.isPublic,
       fromUser: currentUser,
-      toUser: selectedUsers.length === 1 ? selectedUsers[0] : selectedUsers,
+      toUser: selectedUsers,
+      requiresApproval:
+        currentUser.role === "admin" &&
+        selectedUsers.some((user) => user.role === "user"),
     });
 
-    if (requiresApproval) {
-      addNotification({
-        type: "info",
-        message: `Kudos submitted for admin approval. It will be published after review.`,
-      });
-    } else {
-      const userNames = selectedUsers.map((u) => u.name).join(", ");
-      addNotification({
-        type: "success",
-        message: `Kudos sent to ${userNames}!`,
-      });
-    }
+    const userNames = selectedUsers.map((u) => u.name).join(", ");
+    addNotification({
+      type: "success",
+      message: `Kudos sent to ${userNames}!`,
+    });
 
     // Reset form
     form.reset();
@@ -177,16 +168,15 @@ export function KudosForm() {
                   return (
                     <div
                       key={user.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${
                         isSelected
                           ? "bg-blue-50 border-blue-200"
                           : "hover:bg-gray-50"
                       }`}
-                      onClick={() => toggleUser(user)}
                     >
                       <Checkbox
                         checked={isSelected}
-                        onChange={() => toggleUser(user)}
+                        onCheckedChange={() => toggleUser(user)}
                       />
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={user.avatar} alt={user.name} />

@@ -26,7 +26,7 @@ export interface Kudos {
   createdAt: Date;
   isPublic: boolean;
   fromUser: User;
-  toUser: User;
+  toUser: User | User[];
 }
 
 export interface Feedback {
@@ -54,6 +54,7 @@ export interface ActivityItem {
   targetUser?: User;
   kudos?: Kudos;
   feedback?: Feedback;
+  additionalRecipients?: User[];
 }
 
 export interface Team {

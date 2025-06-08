@@ -9,6 +9,7 @@ import { useCommentsStore } from "@/stores/useCommentsStore";
 import { useUIStore } from "@/stores/useUIStore";
 import { formatDistanceToNow } from "date-fns";
 import { Heart, MessageCircle, Share2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface KudosCardProps {
   kudos: Kudos;
@@ -19,6 +20,7 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const { getCommentsForKudos } = useCommentsStore();
   const { addNotification } = useUIStore();
+  const navigate = useNavigate();
 
   const comments = getCommentsForKudos(kudos.id);
   const commentCount = comments.length;
@@ -36,8 +38,11 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
       });
     } else {
       // Fallback: copy to clipboard
+      const recipients = Array.isArray(kudos.toUser)
+        ? kudos.toUser.map((u) => u.name).join(", ")
+        : kudos.toUser.name;
       navigator.clipboard.writeText(
-        `Check out this kudos from ${kudos.fromUser.name} to ${kudos.toUser.name}: "${kudos.message}"`,
+        `Check out this kudos from ${kudos.fromUser.name} to ${recipients}: "${kudos.message}"`,
       );
       addNotification({
         type: "success",
@@ -46,29 +51,76 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
     }
   };
 
+  const handleUserClick = (userId: string) => {
+    navigate(`/profile/${userId}`);
+  };
+
+  const renderRecipients = () => {
+    const recipients = Array.isArray(kudos.toUser)
+      ? kudos.toUser
+      : [kudos.toUser];
+    if (recipients.length === 1) {
+      return (
+        <button
+          onClick={() => handleUserClick(recipients[0].id)}
+          className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+        >
+          {recipients[0].name}
+        </button>
+      );
+    }
+    return (
+      <span>
+        {recipients.slice(0, 2).map((user, index) => (
+          <span key={user.id}>
+            <button
+              onClick={() => handleUserClick(user.id)}
+              className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+            >
+              {user.name}
+            </button>
+            {index === 0 && recipients.length > 2 && ", "}
+            {index === 0 && recipients.length === 2 && " and "}
+            {index === 0 && recipients.length > 2 && (
+              <span className="text-gray-900">
+                {recipients.length - 1} other{recipients.length > 2 ? "s" : ""}
+              </span>
+            )}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
   return (
     <Card className="kudos-card card-hover animate-fade-in transition-all duration-200 hover:shadow-md">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           {/* Avatar */}
-          <Avatar className="w-12 h-12 flex-shrink-0">
-            <AvatarImage
-              src={kudos.fromUser.avatar}
-              alt={kudos.fromUser.name}
-            />
-            <AvatarFallback>{kudos.fromUser.name.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <button
+            onClick={() => handleUserClick(kudos.fromUser.id)}
+            className="flex-shrink-0"
+          >
+            <Avatar className="w-12 h-12 hover:ring-2 hover:ring-blue-200 transition-all">
+              <AvatarImage
+                src={kudos.fromUser.avatar}
+                alt={kudos.fromUser.name}
+              />
+              <AvatarFallback>{kudos.fromUser.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          </button>
 
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium text-gray-900">
+              <button
+                onClick={() => handleUserClick(kudos.fromUser.id)}
+                className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+              >
                 {kudos.fromUser.name}
-              </span>
+              </button>
               <span className="text-gray-500">gave kudos to</span>
-              <span className="font-medium text-gray-900">
-                {kudos.toUser.name}
-              </span>
+              {renderRecipients()}
               <Heart className="w-4 h-4 text-red-500 fill-current" />
             </div>
 
