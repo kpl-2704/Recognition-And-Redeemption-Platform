@@ -22,11 +22,16 @@ export interface Kudos {
   fromUserId: string;
   toUserId: string;
   message: string;
-  tags: KudosTag[];
-  createdAt: Date;
   isPublic: boolean;
+  status: string;
+  approvalReason?: string;
+  monetaryAmount?: number;
+  currency?: string;
+  createdAt: Date;
+  updatedAt: Date;
   fromUser: User;
   toUser: User | User[];
+  tags: KudosTag[];
 }
 
 export interface Feedback {

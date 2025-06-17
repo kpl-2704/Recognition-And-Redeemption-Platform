@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useUserStore } from "./useUserStore";
+import { api } from "@/lib/api";
 
 interface Notification {
   id: string;
@@ -7,6 +8,7 @@ interface Notification {
   message: string;
   timestamp: Date;
   recipientId?: string; // Optional recipient ID to target specific users
+  isRead?: boolean;
 }
 
 interface UIState {
@@ -14,6 +16,8 @@ interface UIState {
   currentPage: string;
   isKudosModalOpen: boolean;
   isFeedbackModalOpen: boolean;
+  isLoading: boolean;
+  error: string | null;
   toggleSidebar: () => void;
   setCurrentPage: (page: string) => void;
   openKudosModal: () => void;
@@ -28,6 +32,14 @@ interface UIState {
   }) => void;
   removeNotification: (id: string) => void;
   getNotificationsForCurrentUser: () => Notification[];
+  fetchNotifications: (params?: {
+    page?: number;
+    limit?: number;
+    isRead?: boolean;
+  }) => Promise<void>;
+  markNotificationAsRead: (id: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -35,6 +47,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   currentPage: "dashboard",
   isKudosModalOpen: false,
   isFeedbackModalOpen: false,
+  isLoading: false,
+  error: null,
   notifications: [],
 
   toggleSidebar: () => {
@@ -93,8 +107,77 @@ export const useUIStore = create<UIState>((set, get) => ({
     // Return notifications that are either:
     // 1. Not targeted to any specific user (recipientId is undefined)
     // 2. Targeted to the current user (recipientId matches current user's ID)
+    // 3. Targeted to "current" (for current user)
+    // 4. Targeted to "admin" (if current user is admin)
     return notifications.filter(
-      (n) => !n.recipientId || n.recipientId === currentUser.id,
+      (n) =>
+        !n.recipientId ||
+        n.recipientId === currentUser.id ||
+        n.recipientId === "current" ||
+        (n.recipientId === "admin" && currentUser.role === "admin"),
     );
+  },
+
+  fetchNotifications: async (params) => {
+    try {
+      set({ isLoading: true, error: null });
+      const response = await api.getNotifications(params);
+
+      set({
+        notifications: response.notifications,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch notifications",
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  markNotificationAsRead: async (id: string) => {
+    try {
+      await api.markNotificationAsRead(id);
+
+      set((state) => ({
+        notifications: state.notifications.map((n) =>
+          n.id === id ? { ...n, isRead: true } : n,
+        ),
+      }));
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to mark notification as read",
+      });
+      throw error;
+    }
+  },
+
+  markAllNotificationsAsRead: async () => {
+    try {
+      await api.markAllNotificationsAsRead();
+
+      set((state) => ({
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+      }));
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to mark all notifications as read",
+      });
+      throw error;
+    }
+  },
+
+  clearError: () => {
+    set({ error: null });
   },
 }));

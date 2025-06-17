@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { Kudos, KudosTag, ActivityItem, User } from "@/types";
-import { mockKudos, mockKudosTags, mockActivityFeed } from "@/data/mockData";
+import { api } from "@/lib/api";
 import { useUIStore } from "./useUIStore";
+import { useUserStore } from "./useUserStore";
 
 // Extended Kudos interface for approval system
 interface PendingKudos extends Omit<Kudos, "toUser"> {
@@ -16,17 +17,36 @@ interface KudosState {
   tags: KudosTag[];
   activityFeed: ActivityItem[];
   isLoading: boolean;
-  addKudos: (
-    kudos: Omit<Kudos, "id" | "createdAt"> & {
-      toUser: User | User[];
-      requiresApproval?: boolean;
-    },
-  ) => void;
-  approveKudos: (kudosId: string) => void;
-  rejectKudos: (kudosId: string, reason?: string) => void;
+  error: string | null;
+  addKudos: (kudosData: {
+    toUserId: string;
+    message: string;
+    tagIds?: string[];
+    isPublic?: boolean;
+    monetaryAmount?: number;
+    currency?: string;
+  }) => Promise<void>;
+  approveKudos: (kudosId: string) => Promise<void>;
+  rejectKudos: (kudosId: string, reason?: string) => Promise<void>;
   getKudosForUser: (userId: string) => Kudos[];
   getKudosStats: () => { sent: number; received: number };
-  refreshFeed: () => void;
+  refreshFeed: () => Promise<void>;
+  fetchKudos: (params?: {
+    page?: number;
+    limit?: number;
+    fromUserId?: string;
+    toUserId?: string;
+    status?: string;
+    isPublic?: boolean;
+  }) => Promise<void>;
+  fetchKudosTags: () => Promise<void>;
+  fetchActivities: (params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    userId?: string;
+  }) => Promise<void>;
+  clearError: () => void;
 }
 
 // Helper function to check if kudos requires approval
@@ -54,11 +74,12 @@ const loadInitialState = () => {
     console.error("Error loading kudos store:", error);
   }
   return {
-    kudos: mockKudos,
+    kudos: [],
     pendingKudos: [],
-    tags: mockKudosTags,
-    activityFeed: mockActivityFeed,
+    tags: [],
+    activityFeed: [],
     isLoading: false,
+    error: null,
   };
 };
 
@@ -69,247 +90,191 @@ export const useKudosStore = create<KudosState>((set, get) => {
   return {
     ...initialState,
 
-    addKudos: (newKudos) => {
-      const kudosId = Date.now().toString();
-      const createdAt = new Date();
-      const { addNotification } = useUIStore.getState();
+    addKudos: async (kudosData) => {
+      try {
+        set({ isLoading: true, error: null });
+        const { addNotification } = useUIStore.getState();
 
-      // Check if approval is required
-      const needsApproval = requiresApproval(
-        newKudos.fromUser,
-        newKudos.toUser,
-      );
+        const response = await api.createKudos(kudosData);
 
-      if (needsApproval) {
-        // Add to pending kudos
-        const pendingKudos: PendingKudos = {
-          ...newKudos,
-          id: kudosId,
-          createdAt,
-          status: "pending",
-        };
-
-        set((state) => {
-          const newState = {
-            ...state,
-            pendingKudos: [pendingKudos, ...state.pendingKudos],
-          };
-          localStorage.setItem(
-            "kudos-store",
-            JSON.stringify({ state: newState, version: 1 }),
-          );
-          return newState;
-        });
-
-        // Notify admins about pending kudos
-        addNotification({
-          type: "info",
-          message: "New kudos pending approval",
-          recipientId: "admin", // This will be shown to all admin users
-        });
-
-        // Notify sender about pending status
-        addNotification({
-          type: "info",
-          message: "Your kudos is pending approval",
-          recipientId: newKudos.fromUserId,
-        });
-      } else {
-        // Handle multiple recipients
-        const recipients = Array.isArray(newKudos.toUser)
-          ? newKudos.toUser
-          : [newKudos.toUser];
-
-        // Create individual kudos entries for each recipient
-        const kudosEntries = recipients.map((recipient, index) => ({
-          ...newKudos,
-          toUser: recipient,
-          toUserId: recipient.id,
-          id: `${kudosId}-${index}`,
-          createdAt,
+        // Add the new kudos to the list
+        set((state) => ({
+          kudos: [response.kudos, ...state.kudos],
+          isLoading: false,
         }));
 
-        // Create a single activity feed entry for all recipients
-        const activityItem: ActivityItem = {
-          id: `${kudosId}-activity`,
-          type: "kudos",
-          userId: newKudos.fromUserId,
-          targetUserId: recipients[0].id,
-          message:
-            recipients.length > 1
-              ? `gave kudos to ${recipients[0].name} and ${recipients.length - 1} others`
-              : "gave kudos to",
-          createdAt,
-          user: newKudos.fromUser,
-          targetUser: recipients[0],
-          kudos: kudosEntries[0],
-          additionalRecipients:
-            recipients.length > 1 ? recipients.slice(1) : undefined,
-        };
-
-        set((state) => {
-          const newState = {
-            ...state,
-            kudos: [...kudosEntries, ...state.kudos],
-            activityFeed: [activityItem, ...state.activityFeed],
-          };
-          localStorage.setItem(
-            "kudos-store",
-            JSON.stringify({ state: newState, version: 1 }),
-          );
-          return newState;
-        });
-
-        // Notify each recipient individually
-        recipients.forEach((recipient) => {
-          addNotification({
-            type: "success",
-            message: `You received kudos from ${newKudos.fromUser.name}!`,
-            recipientId: recipient.id,
-          });
-        });
-
-        // Notify sender about successful kudos
+        // Notify recipient
         addNotification({
           type: "success",
-          message: `Kudos sent to ${recipients.map((r) => r.name).join(", ")}!`,
-          recipientId: newKudos.fromUserId,
+          message: `Kudos sent successfully!`,
+          recipientId: kudosData.toUserId,
         });
+
+        // Refresh the feed
+        get().refreshFeed();
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : "Failed to send kudos",
+          isLoading: false,
+        });
+        throw error;
       }
     },
 
-    approveKudos: (kudosId: string) => {
-      const { pendingKudos } = get();
-      const { addNotification } = useUIStore.getState();
-      const pendingKudos_item = pendingKudos.find((k) => k.id === kudosId);
+    approveKudos: async (kudosId: string) => {
+      try {
+        set({ isLoading: true, error: null });
+        const { addNotification } = useUIStore.getState();
 
-      if (pendingKudos_item) {
-        // Handle multiple recipients
-        const recipients = Array.isArray(pendingKudos_item.toUser)
-          ? pendingKudos_item.toUser
-          : [pendingKudos_item.toUser];
+        await api.approveKudos(kudosId);
 
-        recipients.forEach((recipient, index) => {
-          const kudos: Kudos = {
-            ...pendingKudos_item,
-            toUser: recipient,
-            toUserId: recipient.id,
-            id: `${kudosId}-approved-${index}`,
+        // Remove from pending and add to approved
+        set((state) => {
+          const pendingKudos = state.pendingKudos.find((k) => k.id === kudosId);
+          if (!pendingKudos) return state;
+
+          return {
+            pendingKudos: state.pendingKudos.filter((k) => k.id !== kudosId),
+            kudos: [pendingKudos as Kudos, ...state.kudos],
+            isLoading: false,
           };
-
-          const activityItem: ActivityItem = {
-            id: `${kudosId}-activity-approved-${index}`,
-            type: "kudos",
-            userId: kudos.fromUserId,
-            targetUserId: kudos.toUserId,
-            message: "gave kudos to",
-            createdAt: kudos.createdAt,
-            user: kudos.fromUser,
-            targetUser: recipient,
-            kudos,
-          };
-
-          set((state) => {
-            const newState = {
-              ...state,
-              kudos: [kudos, ...state.kudos],
-              activityFeed: [activityItem, ...state.activityFeed],
-              pendingKudos: state.pendingKudos.filter((k) => k.id !== kudosId),
-            };
-            localStorage.setItem(
-              "kudos-store",
-              JSON.stringify({ state: newState, version: 1 }),
-            );
-            return newState;
-          });
-
-          // Notify recipient
-          addNotification({
-            type: "success",
-            message: `You received kudos from ${kudos.fromUser.name}!`,
-            recipientId: recipient.id,
-          });
         });
 
-        // Notify sender about approval
         addNotification({
           type: "success",
-          message: "Your kudos has been approved!",
-          recipientId: pendingKudos_item.fromUserId,
+          message: "Kudos approved successfully!",
+          recipientId: "admin",
         });
+
+        get().refreshFeed();
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : "Failed to approve kudos",
+          isLoading: false,
+        });
+        throw error;
       }
     },
 
-    rejectKudos: (kudosId: string, reason?: string) => {
-      const { addNotification } = useUIStore.getState();
-      const pendingKudos_item = get().pendingKudos.find(
-        (k) => k.id === kudosId,
-      );
+    rejectKudos: async (kudosId: string, reason?: string) => {
+      try {
+        set({ isLoading: true, error: null });
+        const { addNotification } = useUIStore.getState();
 
-      if (pendingKudos_item) {
-        set((state) => {
-          const newState = {
-            ...state,
-            pendingKudos: state.pendingKudos.map((k) =>
-              k.id === kudosId
-                ? { ...k, status: "rejected" as const, approvalReason: reason }
-                : k,
-            ),
-          };
-          localStorage.setItem(
-            "kudos-store",
-            JSON.stringify({ state: newState, version: 1 }),
-          );
-          return newState;
-        });
+        await api.rejectKudos(kudosId, reason);
 
-        // Notify sender about rejection
+        // Remove from pending
+        set((state) => ({
+          pendingKudos: state.pendingKudos.filter((k) => k.id !== kudosId),
+          isLoading: false,
+        }));
+
         addNotification({
-          type: "error",
-          message: reason || "Your kudos was not approved",
-          recipientId: pendingKudos_item.fromUserId,
+          type: "info",
+          message: "Kudos rejected",
+          recipientId: "admin",
         });
-
-        // Remove rejected kudos after a delay
-        setTimeout(() => {
-          set((state) => {
-            const newState = {
-              ...state,
-              pendingKudos: state.pendingKudos.filter((k) => k.id !== kudosId),
-            };
-            localStorage.setItem(
-              "kudos-store",
-              JSON.stringify({ state: newState, version: 1 }),
-            );
-            return newState;
-          });
-        }, 5000);
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : "Failed to reject kudos",
+          isLoading: false,
+        });
+        throw error;
       }
     },
 
     getKudosForUser: (userId: string) => {
-      const { kudos } = get();
-      return kudos.filter(
-        (k) => k.toUserId === userId || k.fromUserId === userId,
-      );
+      return get().kudos.filter((k) => k.toUserId === userId);
     },
 
     getKudosStats: () => {
       const { kudos } = get();
-      const currentUserId = "1"; // Current user ID from mock data
+      const currentUser = useUserStore.getState().currentUser;
 
-      return {
-        sent: kudos.filter((k) => k.fromUserId === currentUserId).length,
-        received: kudos.filter((k) => k.toUserId === currentUserId).length,
-      };
+      if (!currentUser) return { sent: 0, received: 0 };
+
+      const sent = kudos.filter((k) => k.fromUserId === currentUser.id).length;
+      const received = kudos.filter(
+        (k) => k.toUserId === currentUser.id,
+      ).length;
+
+      return { sent, received };
     },
 
-    refreshFeed: () => {
-      set({ isLoading: true });
-      // Simulate API call
-      setTimeout(() => {
-        set({ isLoading: false });
-      }, 500);
+    refreshFeed: async () => {
+      try {
+        await get().fetchActivities();
+      } catch (error) {
+        console.error("Failed to refresh feed:", error);
+      }
+    },
+
+    fetchKudos: async (params) => {
+      try {
+        set({ isLoading: true, error: null });
+        const response = await api.getKudos(params);
+
+        set({
+          kudos: response.kudos,
+          isLoading: false,
+        });
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : "Failed to fetch kudos",
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
+
+    fetchKudosTags: async () => {
+      try {
+        set({ isLoading: true, error: null });
+        const response = await api.getKudosTags();
+
+        set({
+          tags: response.tags,
+          isLoading: false,
+        });
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch kudos tags",
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
+
+    fetchActivities: async (params) => {
+      try {
+        set({ isLoading: true, error: null });
+        const response = await api.getActivities(params);
+
+        set({
+          activityFeed: response.activities,
+          isLoading: false,
+        });
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch activities",
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
+
+    clearError: () => {
+      set({ error: null });
     },
   };
 });

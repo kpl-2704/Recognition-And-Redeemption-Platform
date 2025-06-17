@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -25,36 +26,52 @@ import {
 import { useUIStore } from "@/stores/useUIStore";
 import { useKudosStore } from "@/stores/useKudosStore";
 import { useUserStore } from "@/stores/useUserStore";
-import { mockUsers, mockKudosTags } from "@/data/mockData";
+import { useBudgetStore } from "@/stores/useBudgetStore";
 import { KudosTag, User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { X } from "lucide-react";
+import { X, DollarSign, AlertCircle } from "lucide-react";
 
 const kudosSchema = z.object({
   message: z.string().min(10, "Message must be at least 10 characters"),
   isPublic: z.boolean().default(true),
+  monetaryAmount: z.number().min(0, "Amount must be positive").optional(),
+  currency: z.string().default("USD"),
 });
 
 type KudosFormData = z.infer<typeof kudosSchema>;
 
 export function KudosForm() {
   const { isKudosModalOpen, closeKudosModal, addNotification } = useUIStore();
-  const { addKudos, tags } = useKudosStore();
-  const { currentUser } = useUserStore();
+  const { addKudos, tags, fetchKudosTags, isLoading } = useKudosStore();
+  const { currentUser, users, fetchUsers } = useUserStore();
+  const { myBudget, fetchMyBudget } = useBudgetStore();
   const [selectedTags, setSelectedTags] = useState<KudosTag[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
 
-  const availableUsers = mockUsers.filter(
-    (user) => user.id !== currentUser?.id,
-  );
+  // Fetch users, tags, and budget when component mounts
+  useEffect(() => {
+    if (isKudosModalOpen) {
+      fetchUsers();
+      fetchKudosTags();
+      fetchMyBudget();
+    }
+  }, [isKudosModalOpen, fetchUsers, fetchKudosTags, fetchMyBudget]);
+
+  const availableUsers = users.filter((user) => user.id !== currentUser?.id);
 
   const form = useForm<KudosFormData>({
     resolver: zodResolver(kudosSchema),
     defaultValues: {
       message: "",
       isPublic: true,
+      monetaryAmount: 0,
+      currency: "USD",
     },
   });
+
+  const monetaryAmount = form.watch("monetaryAmount") || 0;
+  const availableBudget = myBudget?.availableBudget || 0;
+  const availableMonthlyBudget = myBudget?.availableMonthlyBudget || 0;
 
   const toggleTag = (tag: KudosTag) => {
     setSelectedTags((prev) => {
@@ -82,7 +99,7 @@ export function KudosForm() {
     setSelectedUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
-  const onSubmit = (data: KudosFormData) => {
+  const onSubmit = async (data: KudosFormData) => {
     if (!currentUser || selectedUsers.length === 0) {
       addNotification({
         type: "error",
@@ -91,30 +108,68 @@ export function KudosForm() {
       return;
     }
 
-    addKudos({
-      fromUserId: currentUser.id,
-      toUserId: selectedUsers[0].id,
-      message: data.message,
-      tags: selectedTags,
-      isPublic: data.isPublic,
-      fromUser: currentUser,
-      toUser: selectedUsers,
-      requiresApproval:
-        currentUser.role === "admin" &&
-        selectedUsers.some((user) => user.role === "user"),
-    });
+    // Validate budget if monetary amount is provided
+    if (data.monetaryAmount && data.monetaryAmount > 0) {
+      if (!myBudget) {
+        addNotification({
+          type: "error",
+          message: "No budget allocated. Please contact your manager.",
+        });
+        return;
+      }
 
-    const userNames = selectedUsers.map((u) => u.name).join(", ");
-    addNotification({
-      type: "success",
-      message: `Kudos sent to ${userNames}!`,
-    });
+      if (availableBudget < data.monetaryAmount) {
+        addNotification({
+          type: "error",
+          message: `Insufficient budget. Available: $${availableBudget.toFixed(2)}, Required: $${data.monetaryAmount.toFixed(2)}`,
+        });
+        return;
+      }
 
-    // Reset form
-    form.reset();
-    setSelectedTags([]);
-    setSelectedUsers([]);
-    closeKudosModal();
+      if (availableMonthlyBudget < data.monetaryAmount) {
+        addNotification({
+          type: "error",
+          message: `Insufficient monthly budget. Available: $${availableMonthlyBudget.toFixed(2)}, Required: $${data.monetaryAmount.toFixed(2)}`,
+        });
+        return;
+      }
+    }
+
+    try {
+      // For now, we'll send kudos to the first selected user
+      // In the future, we can extend the API to support multiple recipients
+      const recipient = selectedUsers[0];
+
+      await addKudos({
+        toUserId: recipient.id,
+        message: data.message,
+        tagIds: selectedTags.map((tag) => tag.id),
+        isPublic: data.isPublic,
+        monetaryAmount: data.monetaryAmount,
+        currency: data.currency,
+      });
+
+      const userNames = selectedUsers.map((u) => u.name).join(", ");
+      const amountText = data.monetaryAmount
+        ? ` worth $${data.monetaryAmount}`
+        : "";
+      addNotification({
+        type: "success",
+        message: `Kudos${amountText} sent to ${userNames}!`,
+      });
+
+      // Reset form
+      form.reset();
+      setSelectedTags([]);
+      setSelectedUsers([]);
+      closeKudosModal();
+    } catch (error) {
+      console.error("Failed to send kudos:", error);
+      addNotification({
+        type: "error",
+        message: "Failed to send kudos. Please try again.",
+      });
+    }
   };
 
   return (
@@ -126,6 +181,32 @@ export function KudosForm() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Budget Display */}
+            {myBudget && (
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-4 h-4 text-blue-600" />
+                  <Label className="text-sm font-medium text-blue-900">
+                    Your Budget
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Total Available:</span>
+                    <span className="ml-2 font-semibold text-green-600">
+                      ${availableBudget.toFixed(2)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Monthly Available:</span>
+                    <span className="ml-2 font-semibold text-green-600">
+                      ${availableMonthlyBudget.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Recipients Selection */}
             <div className="space-y-4">
               <Label className="text-sm font-medium">
@@ -220,6 +301,53 @@ export function KudosForm() {
               )}
             />
 
+            {/* Monetary Amount */}
+            <FormField
+              control={form.control}
+              name="monetaryAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monetary Amount (Optional)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        className="pl-10"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                  {monetaryAmount > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      {monetaryAmount > availableBudget ? (
+                        <div className="flex items-center gap-1 text-red-600">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Exceeds total budget</span>
+                        </div>
+                      ) : monetaryAmount > availableMonthlyBudget ? (
+                        <div className="flex items-center gap-1 text-orange-600">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Exceeds monthly budget</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <span>✓ Budget available</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </FormItem>
+              )}
+            />
+
             {/* Tags */}
             <div>
               <Label className="text-sm font-medium">Tags (optional)</Label>
@@ -265,26 +393,26 @@ export function KudosForm() {
               )}
             />
 
-            {/* Approval Notice */}
-            {currentUser?.role === "admin" &&
-              selectedUsers.some((user) => user.role === "user") && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ This kudos will require admin approval before being
-                    published, as you're recognizing team members.
-                  </p>
-                </div>
-              )}
-
             {/* Actions */}
             <div className="flex gap-3 pt-4">
               <Button
                 type="submit"
                 className="flex-1"
-                disabled={selectedUsers.length === 0}
+                disabled={selectedUsers.length === 0 || isLoading}
               >
-                Send Kudos{" "}
-                {selectedUsers.length > 1 && `(${selectedUsers.length} people)`}
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <>
+                    Send Kudos{" "}
+                    {selectedUsers.length > 1 &&
+                      `(${selectedUsers.length} people)`}
+                    {monetaryAmount > 0 && ` - $${monetaryAmount.toFixed(2)}`}
+                  </>
+                )}
               </Button>
               <Button type="button" variant="outline" onClick={closeKudosModal}>
                 Cancel

@@ -272,10 +272,7 @@ export default function Settings() {
                   <Button variant="outline" className="w-full justify-start">
                     Export Activity History
                   </Button>
-                  <Button
-                    variant="destructive"
-                    className="w-full justify-start"
-                  >
+                  <Button variant="destructive" className="w-fit justify-start">
                     Delete Account
                   </Button>
                 </div>

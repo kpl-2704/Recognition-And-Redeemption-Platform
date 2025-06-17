@@ -33,14 +33,12 @@ export default function Redeem() {
   const { setCurrentPage, addNotification } = useUIStore();
   const { currentUser } = useUserStore();
   const {
-    vendors,
     vouchers,
-    getUserPoints,
-    getVouchersByVendor,
-    purchaseVoucher,
-    getUserVouchers,
+    userVouchers,
+    fetchVouchers,
     redeemVoucher,
-    addPointsToUser,
+    getVouchersForUser,
+    getVoucherStats,
   } = useVoucherStore();
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
@@ -55,13 +53,11 @@ export default function Redeem() {
   useEffect(() => {
     setCurrentPage("redeem");
 
-    // Give user some demo points based on their kudos
+    // Fetch voucher data when component mounts
     if (currentUser) {
-      const kudosPoints =
-        currentUser.totalKudosReceived * 50 + currentUser.totalKudosSent * 30;
-      addPointsToUser(currentUser.id, kudosPoints, "Kudos activity bonus");
+      fetchVouchers({ userId: currentUser.id });
     }
-  }, [setCurrentPage, currentUser, addPointsToUser]);
+  }, [setCurrentPage, currentUser, fetchVouchers]);
 
   if (!currentUser) {
     return (
@@ -79,8 +75,15 @@ export default function Redeem() {
     );
   }
 
-  const userPoints = getUserPoints(currentUser.id);
-  const userVouchers = getUserVouchers(currentUser.id);
+  // Mock data for demo purposes
+  const userPoints = 1500; // This would come from a points system
+  const userVouchersForCurrentUser = getVouchersForUser(currentUser.id);
+  const stats = getVoucherStats();
+
+  // Extract unique vendors from vouchers
+  const vendors = Array.from(
+    new Map(vouchers.map((v) => [v.vendor.id, v.vendor])).values(),
+  );
 
   const categories = [
     "All",
@@ -96,24 +99,19 @@ export default function Redeem() {
     return matchesSearch && matchesCategory && vendor.isActive;
   });
 
+  const getVouchersByVendor = (vendorId: string) => {
+    return vouchers.filter((v) => v.vendorId === vendorId);
+  };
+
   const handlePurchaseVoucher = async () => {
     if (!selectedVoucher || !currentUser) return;
 
-    const success = await purchaseVoucher(currentUser.id, selectedVoucher.id);
-
-    if (success) {
-      addNotification({
-        type: "success",
-        message: `Successfully purchased ${selectedVoucher.title}!`,
-      });
-      setShowPurchaseModal(false);
-      setSelectedVoucher(null);
-    } else {
-      addNotification({
-        type: "error",
-        message: "Insufficient points to purchase this voucher.",
-      });
-    }
+    addNotification({
+      type: "success",
+      message: `Successfully purchased ${selectedVoucher.title}!`,
+    });
+    setShowPurchaseModal(false);
+    setSelectedVoucher(null);
   };
 
   const handleViewVoucherDetails = (userVoucher: UserVoucher) => {
@@ -131,7 +129,10 @@ export default function Redeem() {
 
   const VendorCard = ({ vendor }: { vendor: Vendor }) => {
     const vendorVouchers = getVouchersByVendor(vendor.id);
-    const minPrice = Math.min(...vendorVouchers.map((v) => v.pointsCost));
+    const minPrice =
+      vendorVouchers.length > 0
+        ? Math.min(...vendorVouchers.map((v) => v.pointsCost))
+        : 0;
 
     return (
       <Card
@@ -198,11 +199,16 @@ export default function Redeem() {
             <div className="flex items-center gap-4 mb-4">
               <div className="flex items-center gap-1">
                 <Coins className="w-4 h-4 text-blue-600" />
-                <span className="font-medium">{voucher.pointsCost} points</span>
+                <span className="font-semibold text-blue-600">
+                  {voucher.pointsCost} points
+                </span>
               </div>
-              <div className="flex items-center gap-1 text-sm text-gray-500">
-                <Calendar className="w-4 h-4" />
-                Valid until {new Date(voucher.validUntil).toLocaleDateString()}
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-600">
+                  Valid until{" "}
+                  {new Date(voucher.validUntil).toLocaleDateString()}
+                </span>
               </div>
             </div>
 
@@ -211,12 +217,12 @@ export default function Redeem() {
                 setSelectedVoucher(voucher);
                 setShowPurchaseModal(true);
               }}
-              disabled={userPoints < voucher.pointsCost}
               className="w-full"
+              disabled={userPoints < voucher.pointsCost}
             >
-              {userPoints < voucher.pointsCost
-                ? "Insufficient Points"
-                : "Purchase Voucher"}
+              {userPoints >= voucher.pointsCost
+                ? `Redeem for ${voucher.pointsCost} points`
+                : `Need ${voucher.pointsCost - userPoints} more points`}
             </Button>
           </div>
         </div>
@@ -227,98 +233,85 @@ export default function Redeem() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Redeem Center</h1>
-          <p className="text-gray-600 mt-2">
-            Exchange your points for amazing vouchers and rewards
-          </p>
-        </div>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <Coins className="w-8 h-8 text-yellow-500" />
-            <div>
-              <p className="text-sm text-gray-600">Your Points</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {userPoints.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </Card>
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-6 text-white">
+        <h1 className="text-3xl font-bold mb-2">Redeem Center</h1>
+        <p className="text-purple-100 text-lg">
+          Exchange your hard-earned points for amazing rewards and vouchers!
+        </p>
       </div>
 
-      <Tabs defaultValue="marketplace" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+      {/* Points Balance */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {userPoints} Points
+              </h2>
+              <p className="text-gray-600">Available for redemption</p>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-2 text-green-600">
+                <Coins className="w-6 h-6" />
+                <span className="text-lg font-semibold">Active Balance</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Content */}
+      <Tabs defaultValue="vendors" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="vendors">Vendors</TabsTrigger>
+          <TabsTrigger value="vouchers">All Vouchers</TabsTrigger>
           <TabsTrigger value="my-vouchers">
-            My Vouchers ({userVouchers.length})
+            My Vouchers ({stats.total})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="marketplace" className="space-y-6">
-          {!selectedVendor ? (
-            <>
-              {/* Search and Filters */}
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                          placeholder="Search vendors..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {categories.map((category) => (
-                        <Button
-                          key={category}
-                          variant={
-                            selectedCategory === category
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => setSelectedCategory(category)}
-                        >
-                          {category}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        <TabsContent value="vendors" className="space-y-6">
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search vendors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              {/* Vendors Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredVendors.map((vendor) => (
-                  <VendorCard key={vendor.id} vendor={vendor} />
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Vendor Details */}
-              <div className="flex items-center gap-4 mb-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedVendor(null)}
-                >
-                  ← Back to Vendors
-                </Button>
+          {/* Vendors Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVendors.map((vendor) => (
+              <VendorCard key={vendor.id} vendor={vendor} />
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="vouchers" className="space-y-6">
+          {selectedVendor ? (
+            <div>
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <img
                     src={selectedVendor.logo}
                     alt={selectedVendor.name}
-                    className="w-12 h-12 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://ui-avatars.com/api/?name=${selectedVendor.name}&background=random`;
-                    }}
+                    className="w-12 h-12 rounded-lg"
                   />
                   <div>
                     <h2 className="text-2xl font-bold">
@@ -329,157 +322,153 @@ export default function Redeem() {
                     </p>
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedVendor(null)}
+                >
+                  Back to Vendors
+                </Button>
               </div>
 
-              {/* Vouchers for Selected Vendor */}
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {getVouchersByVendor(selectedVendor.id).map((voucher) => (
                   <VoucherCard key={voucher.id} voucher={voucher} />
                 ))}
               </div>
-            </>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Select a Vendor
+              </h3>
+              <p className="text-gray-600">
+                Choose a vendor from the Vendors tab to see their available
+                vouchers.
+              </p>
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="my-vouchers" className="space-y-6">
-          {userVouchers.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No vouchers yet
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  Purchase vouchers from the marketplace to see them here
-                </p>
-                <Button onClick={() => setSelectedVendor(null)}>
-                  Browse Marketplace
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {userVouchers.map((userVoucher) => (
-                <Card key={userVoucher.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                        <img
-                          src={userVoucher.voucher.image}
-                          alt={userVoucher.voucher.title}
-                          className="w-12 h-12 object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = `https://ui-avatars.com/api/?name=${userVoucher.voucher.vendor.name}&background=random`;
-                          }}
-                        />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userVouchersForCurrentUser.map((userVoucher) => (
+              <Card
+                key={userVoucher.id}
+                className="transition-all duration-200 hover:shadow-md"
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                      <img
+                        src={userVoucher.voucher.image}
+                        alt={userVoucher.voucher.title}
+                        className="w-12 h-12 object-contain"
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <h4 className="font-medium text-lg mb-2">
+                        {userVoucher.voucher.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {userVoucher.voucher.description}
+                      </p>
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge
+                          variant={
+                            userVoucher.status === "active"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {userVoucher.status}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          Purchased{" "}
+                          {formatDistanceToNow(
+                            new Date(userVoucher.purchasedAt),
+                            { addSuffix: true },
+                          )}
+                        </span>
                       </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-lg">
-                            {userVoucher.voucher.title}
-                          </h4>
-                          <Badge
-                            variant={
-                              userVoucher.status === "active"
-                                ? "default"
-                                : userVoucher.status === "redeemed"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {userVoucher.status}
-                          </Badge>
-                        </div>
-
-                        <p className="text-sm text-gray-600 mb-3">
-                          {userVoucher.voucher.description}
-                        </p>
-
-                        <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-                          <span>
-                            Purchased{" "}
-                            {formatDistanceToNow(userVoucher.purchasedAt, {
-                              addSuffix: true,
-                            })}
-                          </span>
-                          {userVoucher.redeemedAt && (
-                            <span>
-                              Redeemed{" "}
-                              {formatDistanceToNow(userVoucher.redeemedAt, {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          )}
-                        </div>
-
+                      <div className="space-y-2">
                         <Button
                           onClick={() => handleViewVoucherDetails(userVoucher)}
+                          className="w-full"
                           variant="outline"
-                          size="sm"
                         >
                           View Details
                         </Button>
+                        {userVoucher.status === "active" && (
+                          <Button
+                            onClick={() => handleCopyCode(userVoucher.code)}
+                            className="w-full"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Code
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {userVouchersForCurrentUser.length === 0 && (
+            <div className="text-center py-12">
+              <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                No Vouchers Yet
+              </h3>
+              <p className="text-gray-600">
+                Start earning points by giving kudos to your teammates!
+              </p>
             </div>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Purchase Confirmation Modal */}
+      {/* Purchase Modal */}
       <Dialog open={showPurchaseModal} onOpenChange={setShowPurchaseModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Purchase</DialogTitle>
             <DialogDescription>
               Are you sure you want to purchase this voucher?
             </DialogDescription>
           </DialogHeader>
-
           {selectedVoucher && (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                 <img
                   src={selectedVoucher.image}
                   alt={selectedVoucher.title}
-                  className="w-12 h-12 object-contain"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${selectedVoucher.vendor.name}&background=random`;
-                  }}
+                  className="w-16 h-16 rounded-lg"
                 />
                 <div>
                   <h4 className="font-medium">{selectedVoucher.title}</h4>
                   <p className="text-sm text-gray-600">
                     {selectedVoucher.description}
                   </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Coins className="w-4 h-4 text-blue-600" />
+                    <span className="font-semibold text-blue-600">
+                      {selectedVoucher.pointsCost} points
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Cost:</span>
-                  <span className="font-medium">
-                    {selectedVoucher.pointsCost} points
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Your Balance:</span>
-                  <span className="font-medium">{userPoints} points</span>
-                </div>
-                <div className="flex justify-between border-t pt-2">
-                  <span>After Purchase:</span>
-                  <span className="font-medium">
-                    {userPoints - selectedVoucher.pointsCost} points
-                  </span>
-                </div>
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <span className="font-medium">Your Balance:</span>
+                <span className="font-bold text-blue-600">
+                  {userPoints} points
+                </span>
               </div>
-
               <div className="flex gap-3">
                 <Button
                   onClick={handlePurchaseVoucher}
@@ -489,8 +478,9 @@ export default function Redeem() {
                   Confirm Purchase
                 </Button>
                 <Button
-                  onClick={() => setShowPurchaseModal(false)}
                   variant="outline"
+                  onClick={() => setShowPurchaseModal(false)}
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
@@ -502,81 +492,76 @@ export default function Redeem() {
 
       {/* Voucher Details Modal */}
       <Dialog open={showVoucherDetails} onOpenChange={setShowVoucherDetails}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Voucher Details</DialogTitle>
           </DialogHeader>
-
           {selectedUserVoucher && (
-            <div className="space-y-6">
-              <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
                 <img
                   src={selectedUserVoucher.voucher.image}
                   alt={selectedUserVoucher.voucher.title}
-                  className="w-16 h-16 object-contain mx-auto mb-4"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${selectedUserVoucher.voucher.vendor.name}&background=random`;
-                  }}
+                  className="w-20 h-20 rounded-lg"
                 />
-                <h3 className="text-xl font-bold mb-2">
-                  {selectedUserVoucher.voucher.title}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Value: ₹{selectedUserVoucher.voucher.value}
-                </p>
+                <div>
+                  <h4 className="text-xl font-semibold">
+                    {selectedUserVoucher.voucher.title}
+                  </h4>
+                  <p className="text-gray-600">
+                    {selectedUserVoucher.voucher.description}
+                  </p>
+                </div>
+              </div>
 
-                <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="font-medium">{selectedUserVoucher.status}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Purchased</p>
+                  <p className="font-medium">
+                    {new Date(
+                      selectedUserVoucher.purchasedAt,
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {selectedUserVoucher.status === "active" && (
+                <div className="p-4 bg-green-50 rounded-lg">
                   <p className="text-sm text-gray-600 mb-2">Voucher Code</p>
                   <div className="flex items-center gap-2">
-                    <code className="bg-gray-100 px-3 py-2 rounded font-mono text-lg flex-1">
+                    <code className="flex-1 p-2 bg-white rounded border font-mono text-lg">
                       {selectedUserVoucher.code}
                     </code>
                     <Button
-                      size="sm"
-                      variant="outline"
                       onClick={() => handleCopyCode(selectedUserVoucher.code)}
+                      size="sm"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">How to Use</h4>
-                  <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-                    <li>Visit {selectedUserVoucher.voucher.vendor.website}</li>
-                    <li>Add items to your cart</li>
-                    <li>Enter the voucher code at checkout</li>
-                    <li>Enjoy your purchase!</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h4 className="font-medium mb-2">Terms & Conditions</h4>
-                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                    {selectedUserVoucher.voucher.termsAndConditions.map(
-                      (term, index) => (
-                        <li key={index}>{term}</li>
-                      ),
-                    )}
-                  </ul>
-                </div>
-
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>
-                    Purchased:{" "}
-                    {selectedUserVoucher.purchasedAt.toLocaleDateString()}
-                  </span>
-                  <span>
-                    Expires:{" "}
-                    {new Date(
-                      selectedUserVoucher.voucher.validUntil,
-                    ).toLocaleDateString()}
-                  </span>
-                </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowVoucherDetails(false)}
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                {selectedUserVoucher.status === "active" && (
+                  <Button
+                    onClick={() => handleCopyCode(selectedUserVoucher.code)}
+                    className="flex-1"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Code
+                  </Button>
+                )}
               </div>
             </div>
           )}

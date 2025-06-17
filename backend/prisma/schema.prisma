@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String
+  password          String
+  avatar            String?
+  role              String   @default("USER")
+  department        String?
+  joinedAt          DateTime @default(now())
+  totalKudosReceived Int     @default(0)
+  totalKudosSent    Int     @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  sentKudos         Kudos[]  @relation("KudosFrom")
+  receivedKudos     Kudos[]  @relation("KudosTo")
+  sentFeedback      Feedback[] @relation("FeedbackFrom")
+  receivedFeedback  Feedback[] @relation("FeedbackTo")
+  sentComments      Comment[] @relation("CommentFrom")
+  activities        Activity[] @relation("ActivityUser")
+  targetActivities  Activity[] @relation("ActivityTarget")
+  vouchers          Voucher[] @relation("VoucherUser")
+  teamMemberships   TeamMember[]
+  notifications     Notification[] @relation("NotificationUser")
+  budget            Budget?
+
+  @@map("users")
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  totalBudget Float    @default(0)
+  usedBudget  Float    @default(0)
+  monthlyBudget Float  @default(0)
+  resetDate   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budgets")
+}
+
+model KudosTag {
+  id        String @id @default(cuid())
+  name      String
+  emoji     String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  kudos     Kudos[] @relation("KudosTags")
+
+  @@map("kudos_tags")
+}
+
+model Kudos {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  message     String
+  isPublic    Boolean  @default(true)
+  status      String   @default("APPROVED")
+  approvalReason String?
+  monetaryAmount Float? @default(0)
+  currency    String   @default("USD")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  fromUser    User     @relation("KudosFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User     @relation("KudosTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  tags        KudosTag[] @relation("KudosTags")
+  comments    Comment[] @relation("KudosComments")
+  activities  Activity[] @relation("KudosActivity")
+
+  @@map("kudos")
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String?
+  message     String
+  type        String
+  isPublic    Boolean  @default(true)
+  isAnonymous Boolean  @default(false)
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  fromUser    User     @relation("FeedbackFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User?    @relation("FeedbackTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  comments    Comment[] @relation("FeedbackComments")
+  activities  Activity[] @relation("FeedbackActivity")
+
+  @@map("feedback")
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  kudosId     String?
+  feedbackId  String?
+  message     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  fromUser    User     @relation("CommentFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  kudos       Kudos?   @relation("KudosComments", fields: [kudosId], references: [id], onDelete: Cascade)
+  feedback    Feedback? @relation("FeedbackComments", fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Activity {
+  id            String       @id @default(cuid())
+  type          String
+  userId        String
+  targetUserId  String?
+  message       String
+  kudosId       String?
+  feedbackId    String?
+  createdAt     DateTime     @default(now())
+
+  // Relations
+  user          User         @relation("ActivityUser", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser    User?        @relation("ActivityTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  kudos         Kudos?       @relation("KudosActivity", fields: [kudosId], references: [id], onDelete: Cascade)
+  feedback      Feedback?    @relation("FeedbackActivity", fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members   TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String @id @default(cuid())
+  userId   String
+  teamId   String
+  role     String @default("MEMBER")
+  joinedAt DateTime @default(now())
+
+  // Relations
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Voucher {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  value       Float
+  description String
+  isRedeemed  Boolean  @default(false)
+  redeemedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation("VoucherUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("vouchers")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  user        User             @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+

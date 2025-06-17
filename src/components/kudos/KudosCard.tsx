@@ -8,7 +8,7 @@ import { CommentModal } from "./CommentModal";
 import { useCommentsStore } from "@/stores/useCommentsStore";
 import { useUIStore } from "@/stores/useUIStore";
 import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageCircle, Share2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface KudosCardProps {
@@ -122,12 +122,34 @@ export function KudosCard({ kudos, showActions = true }: KudosCardProps) {
               <span className="text-gray-500">gave kudos to</span>
               {renderRecipients()}
               <Heart className="w-4 h-4 text-red-500 fill-current" />
+              {kudos.monetaryAmount && kudos.monetaryAmount > 0 && (
+                <Badge
+                  variant="outline"
+                  className="bg-green-50 text-green-700 border-green-200 gap-1"
+                >
+                  <DollarSign className="w-3 h-3" />
+                  {kudos.monetaryAmount.toFixed(2)}
+                </Badge>
+              )}
             </div>
 
             {/* Message */}
             <p className="text-gray-700 mb-4 leading-relaxed">
               {kudos.message}
             </p>
+
+            {/* Monetary Amount Display */}
+            {kudos.monetaryAmount && kudos.monetaryAmount > 0 && (
+              <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <span className="font-semibold text-green-800">
+                    Monetary Kudos: ${kudos.monetaryAmount.toFixed(2)}{" "}
+                    {kudos.currency}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Tags */}
             {kudos.tags.length > 0 && (

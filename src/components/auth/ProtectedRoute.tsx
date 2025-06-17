@@ -7,18 +7,24 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated, currentUser } = useUserStore();
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("ProtectedRoute - isAuthenticated:", isAuthenticated);
+    console.log("ProtectedRoute - currentUser:", currentUser);
+
     if (!isAuthenticated) {
+      console.log("ProtectedRoute - redirecting to login");
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, currentUser]);
 
   if (!isAuthenticated) {
+    console.log("ProtectedRoute - not authenticated, returning null");
     return null;
   }
 
+  console.log("ProtectedRoute - authenticated, rendering children");
   return <>{children}</>;
 }

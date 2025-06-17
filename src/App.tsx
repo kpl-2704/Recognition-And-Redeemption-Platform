@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { KudosForm } from "@/components/kudos/KudosForm";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
+import { AppInitializer } from "@/components/AppInitializer";
 import Dashboard from "./pages/Dashboard";
 import Kudos from "./pages/Kudos";
 import Feedback from "./pages/Feedback";
@@ -26,6 +27,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        {/* <AppInitializer /> */}
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
