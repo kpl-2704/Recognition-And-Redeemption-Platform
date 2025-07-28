@@ -46,7 +46,7 @@ export function QuickActions() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {actions.map((action) => (
+          {actions?.map((action) => (
             <Button
               key={action.title}
               variant="outline"
@@ -60,7 +60,7 @@ export function QuickActions() {
               </div>
               <div>
                 <div className="font-medium text-gray-900">{action.title}</div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 flex flex-wrap break-words">
                   {action.description}
                 </div>
               </div>
