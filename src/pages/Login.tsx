@@ -237,6 +237,14 @@ export default function Login() {
                   : "Already have an account? Sign in"}
               </Button>
             </div>
+            <div className="mt-4">
+              <div className="font-semibold">Important</div>
+              <div className="text-sm text-gray-500">
+                <div>Use This crediantials to login</div>
+                <div className="text-sm">username: kapilm@gmail.com</div>
+                <div className="text-sm">password: Qwerty@123</div>
+              </div>
+            </div>
 
             {/* Demo Info */}
             <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
