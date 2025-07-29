@@ -22,7 +22,8 @@ export default function Dashboard() {
     setCurrentPage("dashboard");
 
     // Fetch kudos and activities when component mounts
-    if (currentUser) {
+    // For authenticated users, fetch from API; for guest users, data is already loaded
+    if (currentUser && useUserStore.getState().isAuthenticated) {
       fetchKudos();
       fetchActivities();
     }
@@ -43,11 +44,29 @@ export default function Dashboard() {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
         <h1 className="text-3xl font-bold mb-2">
           Welcome back, {currentUser?.name}! 👋
+          {!useUserStore.getState().isAuthenticated && (
+            <span className="text-sm font-normal text-blue-200 ml-2">
+              (Demo Mode)
+            </span>
+          )}
         </h1>
         <p className="text-blue-100 text-lg">
           Ready to spread some appreciation today? Your team is waiting for your
           recognition.
         </p>
+        {!useUserStore.getState().isAuthenticated && (
+          <div className="mt-3 p-3 bg-blue-500/20 rounded-lg">
+            <p className="text-blue-100 text-sm">
+              🎭 You're viewing the dashboard as a demo admin user.
+              <button
+                onClick={() => (window.location.href = "/login")}
+                className="underline ml-1 hover:text-white"
+              >
+                Sign in to access your real account
+              </button>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Stats Overview */}

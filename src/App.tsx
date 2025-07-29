@@ -27,98 +27,80 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        {/* <AppInitializer /> */}
+        <AppInitializer />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
             path="/"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
             }
           />
           <Route
             path="/kudos"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Kudos />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Kudos />
+              </AppLayout>
             }
           />
           <Route
             path="/feedback"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Feedback />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Feedback />
+              </AppLayout>
             }
           />
           <Route
             path="/analytics"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Analytics />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Analytics />
+              </AppLayout>
             }
           />
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Profile />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Profile />
+              </AppLayout>
             }
           />
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Admin />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Admin />
+              </AppLayout>
             }
           />
           <Route
             path="/redeem"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Redeem />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Redeem />
+              </AppLayout>
             }
           />
           <Route
             path="/settings"
             element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Settings />
-                </AppLayout>
-              </ProtectedRoute>
+              <AppLayout>
+                <Settings />
+              </AppLayout>
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
 
-        {/* Global Modals - Only show when authenticated */}
-        <ProtectedRoute>
-          <KudosForm />
-          <FeedbackForm />
-        </ProtectedRoute>
+        {/* Global Modals - Show for all users */}
+        <KudosForm />
+        <FeedbackForm />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

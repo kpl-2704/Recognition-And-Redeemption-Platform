@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { Zap, Users, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const { login, register, isLoading, error, clearError } = useUserStore();
+  const { login, register, isLoading, error, clearError, isAuthenticated } =
+    useUserStore();
   const { addNotification } = useUIStore();
   const navigate = useNavigate();
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -21,6 +22,15 @@ export default function Login() {
     department: "",
     role: "user" as "user" | "admin",
   });
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +226,7 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
               <Button
                 variant="link"
                 onClick={() => {
@@ -236,6 +246,19 @@ export default function Login() {
                   ? "Don't have an account? Sign up"
                   : "Already have an account? Sign in"}
               </Button>
+
+              <div className="border-t pt-3">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/")}
+                  className="w-full text-green-600 border-green-200 hover:bg-green-50"
+                >
+                  🚀 Access Dashboard Without Login
+                </Button>
+                <p className="text-xs text-gray-500 mt-1">
+                  You can explore all features without creating an account
+                </p>
+              </div>
             </div>
             <div className="mt-4">
               <div className="font-semibold">Important</div>

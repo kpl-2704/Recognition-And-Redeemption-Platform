@@ -7,6 +7,7 @@ import { useUserStore } from "@/stores/useUserStore";
 import { useSearchStore } from "@/stores/useSearchStore";
 import { UserSwitcher } from "@/components/auth/UserSwitcher";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +21,8 @@ import { SearchDropdown } from "../search/SearchDropdown";
 export function Header() {
   const { openKudosModal, openFeedbackModal, getNotificationsForCurrentUser } =
     useUIStore();
-  const { currentUser, logout } = useUserStore();
+  const { currentUser, logout, isAuthenticated } = useUserStore();
+  const navigate = useNavigate();
   const {
     query,
     results,
@@ -97,12 +99,20 @@ export function Header() {
         <div className="flex items-center gap-4">
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
-            <Button onClick={openKudosModal} size="sm" className="gap-2">
+            <Button
+              onClick={
+                isAuthenticated ? openKudosModal : () => navigate("/login")
+              }
+              size="sm"
+              className="gap-2"
+            >
               <Plus className="w-4 h-4" />
               Give Kudos
             </Button>
             <Button
-              onClick={openFeedbackModal}
+              onClick={
+                isAuthenticated ? openFeedbackModal : () => navigate("/login")
+              }
               variant="outline"
               size="sm"
               className="gap-2"
@@ -113,84 +123,107 @@ export function Header() {
           </div>
 
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative p-2">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <div className="p-3 border-b">
-                <h3 className="font-semibold">Notifications</h3>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  No new notifications
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      className="p-3 cursor-pointer"
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="relative p-2">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
                     >
-                      <div className="flex-1">
-                        <p className="text-sm">{notification.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {notification.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="p-3 border-b">
+                  <h3 className="font-semibold">Notifications</h3>
                 </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No new notifications
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="p-3 cursor-pointer"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {notification.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                  {currentUser?.name.charAt(0)}
+                  {currentUser?.name?.charAt(0) || "G"}
                 </div>
-                <span className="hidden sm:inline">{currentUser?.name}</span>
+                <span className="hidden sm:inline">
+                  {currentUser?.name || "Guest User"}
+                  {!isAuthenticated && currentUser && (
+                    <span className="ml-1 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                      Demo
+                    </span>
+                  )}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => (window.location.href = "/profile")}
-              >
-                My Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => (window.location.href = "/settings")}
-              >
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Demo Features</DropdownMenuLabel>
-              <UserSwitcher />
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  logout();
-                  window.location.href = "/";
-                }}
-                className="text-red-600 focus:text-red-600"
-              >
-                Sign Out
-              </DropdownMenuItem>
+              {isAuthenticated ? (
+                <>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    My Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Demo Features</DropdownMenuLabel>
+                  <UserSwitcher />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      logout();
+                      navigate("/login");
+                    }}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Sign Out
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuLabel>Guest Mode</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => navigate("/login")}
+                    className="text-blue-600 focus:text-blue-600"
+                  >
+                    Sign In
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Demo Features</DropdownMenuLabel>
+                  <UserSwitcher />
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
